@@ -288,13 +288,10 @@ fork(void)
     return -1;
   }
   np->sz = p->sz;
-
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
-
   // Cause fork to return 0 in the child.
   np->trapframe->a0 = 0;
-
   // increment reference counts on open file descriptors.
   for(i = 0; i < NOFILE; i++)
     if(p->ofile[i])
@@ -302,7 +299,8 @@ fork(void)
   np->cwd = idup(p->cwd);
 
   safestrcpy(np->name, p->name, sizeof(p->name));
-
+  // ������Ҳ���Ƶ��ӽ���,np��ָ���½���proc�ṹ���ָ��
+  np->mask = p->mask;
   pid = np->pid;
 
   release(&np->lock);
@@ -654,3 +652,20 @@ procdump(void)
     printf("\n");
   }
 }
+
+void trace(int mask)
+{
+  myproc()->mask=mask;
+}
+
+int n_proc(void)
+{
+  struct proc *p;
+  int n = 0;
+  for (p = proc; p < &proc[NPROC]; p++) {
+    if (p->state != UNUSED)
+      n++;
+  }
+  return n;
+}
+
