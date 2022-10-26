@@ -148,6 +148,7 @@ main(void)
   int fd;
 
   // Ensure that three file descriptors are open.
+  // 三个文件是作为程序的通用输入输出
   while((fd = open("console", O_RDWR)) >= 0){
     if(fd >= 3){
       close(fd);
@@ -158,13 +159,17 @@ main(void)
   // Read and run input commands.
   while(getcmd(buf, sizeof(buf)) >= 0){
     if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
+      // Chdir命令是自身执行的
       // Chdir must be called by the parent, not the child.
       buf[strlen(buf)-1] = 0;  // chop \n
+      // 切除\n的方法，看起来很朴素
       if(chdir(buf+3) < 0)
         fprintf(2, "cannot cd %s\n", buf+3);
       continue;
     }
+    // 带检查的安全的fork（）
     if(fork1() == 0)
+    // 执行命令，方式也很朴素
       runcmd(parsecmd(buf));
     wait(0);
   }
@@ -177,7 +182,6 @@ panic(char *s)
   fprintf(2, "%s\n", s);
   exit(1);
 }
-
 int
 fork1(void)
 {
