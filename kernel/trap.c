@@ -77,9 +77,21 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2){
+    if(p->alarm_interval) { // 如果被sigalarm 设置了n
+      if(--p->alarm_ticks_left <= 0) { //如果计时器到时，调用alarm_handler
+        if(!p->alarm_handler_lock) { //如果上一个alarm_handler已经执行完毕，锁已被释放，则进行调用
+          // 保存当前trapframe
+          *p->alarm_backup = *p->trapframe;
+          // 修改epc为alarm_handler的地址
+          p->trapframe->epc = (uint64)p->alarm_handler;
+          // 锁上这一次调用
+          p->alarm_handler_lock = 1;
+        }
+      }
+    }
     yield();
-
+  }
   usertrapret();
 }
 
@@ -218,3 +230,20 @@ devintr()
   }
 }
 
+int sigalarm(int ticks, void (*handler)()) { 
+  // 修改proc
+  struct proc *p = myproc();
+  p->alarm_interval = ticks;
+  p->alarm_handler = handler;
+  p->alarm_ticks_left = ticks;
+  return 0;
+}
+
+int sigreturn() { 
+  struct proc *p = myproc();
+  // 恢复 trapframe
+  *p->trapframe = *p->alarm_backup;
+  // 释放函数调用锁
+  p->alarm_handler_lock = 0;
+  return 0;
+}
